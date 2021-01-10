@@ -1,0 +1,79 @@
+/* This module accesess NVRAM and serializes/deserializes data.
+ */
+
+#include "uwlkv.h"
+#include "entry.h"
+
+extern uwlkv_nvram_interface nvram_interface;
+
+/**
+ * @brief	Read entry from NVRAM by offset.
+ *
+ * @param 	   	offset	Offset in bytes.
+ * @param [out]	key   	Entry key.
+ * @param [out]	value 	Entry value.
+ *
+ * @returns	UWLKV_E_SUCCESS on successeful read.
+ */
+uwlkv_error uwlkv_read_entry(const uwlkv_offset offset, uwlkv_key * key, uwlkv_value * value)
+{
+    if ((offset + UWLKV_ENTRY_SIZE) > nvram_interface.size)
+    {
+        return UWLKV_E_WRONG_OFFSET;
+    }
+
+    uint8_t block[UWLKV_ENTRY_SIZE];
+    if (nvram_interface.read((uint8_t *)&block, offset, UWLKV_ENTRY_SIZE))
+    {
+        return UWLKV_E_NVRAM_ERROR;
+    }
+
+    uint8_t erased_bytes = 0;
+    for (uwlkv_offset i = 0; i < UWLKV_ENTRY_SIZE; i++)
+    {
+        if (block[i] == UWLKV_ERASED_BYTE_VALUE)
+        {
+            erased_bytes += 1;
+        }
+    }
+    if (erased_bytes == UWLKV_ENTRY_SIZE)
+    {
+        return UWLKV_E_NOT_EXIST;
+    }
+
+    *key      = *(uwlkv_key*)&block[0];
+    *value    = *(uwlkv_value*)&block[sizeof(uwlkv_key)];
+
+    return UWLKV_E_SUCCESS;
+}
+
+/**
+ * @brief	Write entry to NVRAM by offset.
+ *
+ * @param 	offset	Offset in bytes.
+ * @param 	key   	Entry key.
+ * @param 	value 	Entry value.
+ *
+ * @returns	UWLKV_E_SUCCESS on successeful write.
+ */
+uwlkv_error uwlkv_write_entry(uwlkv_offset offset, uwlkv_key key, uwlkv_value value)
+{
+    if ((offset + UWLKV_ENTRY_SIZE) > nvram_interface.size)
+    {
+        return UWLKV_E_WRONG_OFFSET;
+    }
+
+    uint8_t block[UWLKV_ENTRY_SIZE];
+    uwlkv_key * key_in_block       = (uwlkv_key*)&block[0];
+    uwlkv_value * value_in_block   = (uwlkv_value*)&block[sizeof(uwlkv_key)];
+
+    *key_in_block   = key;
+    *value_in_block = value;
+
+    if (nvram_interface.write((uint8_t *)&block, offset, UWLKV_ENTRY_SIZE))
+    {
+        return UWLKV_E_NVRAM_ERROR;
+    }
+
+    return UWLKV_E_SUCCESS;
+}

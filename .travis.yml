@@ -1,0 +1,37 @@
+dist: bionic
+env:
+  - CTEST_OUTPUT_ON_FAILURE=1
+os:
+- linux
+language: cpp
+
+addons:
+  snaps:
+    - name: cmake
+      confinement: classic
+      channel: latest/candidate
+  sonarcloud:
+    organization: "gordon01"
+    token:
+      secure: "Jusbrvh9PXp52BpI4bIg+9xNb+t6crW8/hw1Db6wQZvpB3TMPO6yppi5ssohvck9rU7V6/ViWf80Jtmay+IIKROfOVgKZaAwNvA7QtdvfB39xeM3U6Ld0XxNDKQWV2lZity/WnxTwZYDFgvyjQlL2vbSar726FNl30oMjpVg/F6AkXdh80DsWctjO6ZKN5oj154BscqE1WHT847PwWWss7tiB/6cPjI2RSZxvsXErlwAWM1N1GKyWTDtQNVsX2VjLg9JdZb5BuQHeWPTRw419+GgvzZ0dieS5pVaqM5q0ltRtKkD2ESvo0DoDKUaOOm7+H6FjsaqhB8bYXJN5bwGBJIPaC9Oj+56W2QZ93l5EuUpuYcehUvUTdEVZ7koD00+wabI9S6VsH3QEyX/HMhUJBJaSiXZY1PhZf+2TQjJi7eLoRV3I+QEBgeRoO1Hzh/jtQUZGuhLv3bkdEuL/4vuxMi9wxG+rh/6tKeyPF3so53RU759EIqMNATFCq9NbuKbrHA5THCGpk3VSP3Fww6vfjEynJR6ppHmeeM34twg6b0vYfjbrOqZIHvXQdml5OE47ABXMsyEHIEqUL/t5f7hp1vSSHfP2mmUO6W2FXBzzn7806cVlIS0SLTqREDpkSk24JcPvKxHZcfT1abQ/nkP3ks1Awu9+IogE3vnCo3d5As="
+
+matrix:
+  include:
+    - compiler: gcc
+      script:
+        - mkdir build
+        - cd build
+        - /snap/bin/cmake ../
+        - build-wrapper-linux-x86-64 --out-dir ../bw-output make all
+        - ./uwlkv 
+        - make coverage
+        - cd ..
+        - sonar-scanner -Dsonar.cfamily.build-wrapper-output=bw-output
+
+    - compiler: clang
+      script:
+        - mkdir build
+        - cd build
+        - /snap/bin/cmake ../
+        - make all
+        - ./uwlkv 
