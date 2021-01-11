@@ -111,21 +111,26 @@ uint8_t compare_stored_values(std::map<uwlkv_key, uwlkv_value> &map)
     return (errors != 0);
 }
 
-TEST_CASE("Restarts", "[restarts]")
+void fill_main(std::map<uwlkv_key, uwlkv_value> &map, uwlkv_offset number, uwlkv_value starting_value)
+{
+    for(uwlkv_offset i = 0; i < number; i++)
+    {
+        const uwlkv_key   key   = (uwlkv_key)(i % UWLKV_MAX_ENTRIES);
+        const uwlkv_value value = (uwlkv_value)i + starting_value;
+        if (UWLKV_E_SUCCESS == uwlkv_set_value(key, value))
+        {
+            map[key] = value;
+        }
+    }
+}
+
+TEST_CASE("Data wraps", "[wraps]")
 {
     const auto capacity = erase_nvram(0, 0);
     std::map<uwlkv_key, uwlkv_value> values;
 
     // Prepare a state where main area is fully filled
-    for(uwlkv_offset i = 0; i < capacity; i++)
-    {
-        const uwlkv_key   key   = (uwlkv_key)(i % UWLKV_MAX_ENTRIES);
-        const uwlkv_value value = (uwlkv_value)i;
-        if (UWLKV_E_SUCCESS == uwlkv_set_value(key, value))
-        {
-            values[key] = value;
-        }
-    }
+    fill_main(values, capacity, 0);
 
     const auto entries = uwlkv_get_entries_number();
     CHECK(entries == values.size());
@@ -134,8 +139,6 @@ TEST_CASE("Restarts", "[restarts]")
     SECTION("No wrap")
     {
         init_uwlkv(0, 0);
-        // Checking that after restart we have same amount of entries
-        CHECK(entries == uwlkv_get_entries_number());
         CHECK(0 == compare_stored_values(values));
     }
 
@@ -146,14 +149,6 @@ TEST_CASE("Restarts", "[restarts]")
         values[10] = 10000;
         init_uwlkv(0, 0);
         CHECK(0 == compare_stored_values(values));
-
-        // Finally setting some more values and making sure they present after restart
-        uwlkv_set_value(10, 11000);
-        uwlkv_set_value(15, 15000);
-        values[10] = 11000;
-        values[15] = 15000;
-        init_uwlkv(0, 0);
-        CHECK(0 == compare_stored_values(values));
     }
 
     SECTION("Interrupted erase of main area")
@@ -162,9 +157,9 @@ TEST_CASE("Restarts", "[restarts]")
         uwlkv_set_value(10, 10000);
 
         mock_flash_set_erase(RESERVED_AREA, ERASE_ENABLED);
+        mock_flash_fill_with_random(MAIN_AREA);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
-        mock_flash_fill_with_random(MAIN_AREA);
 
         init_uwlkv(0, 0);
         CHECK(0 == compare_stored_values(values));
@@ -172,9 +167,9 @@ TEST_CASE("Restarts", "[restarts]")
 
     SECTION("Interrupted erase of reserved area")
     {
+        mock_flash_fill_with_random(RESERVED_AREA);
         mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
-        mock_flash_fill_with_random(RESERVED_AREA);
 
         init_uwlkv(0, 0);
         CHECK(0 == compare_stored_values(values));
@@ -186,14 +181,11 @@ TEST_CASE("Restarts", "[restarts]")
          * setting flags MAIN_ERASE_STARTED and MAIN_ERASE_FINISHED. Therefore, library 
          * should discard data in reserved area and erase it */
         mock_flash_fill_with_random(RESERVED_AREA);
+        mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_STARTED,      UWLKV_NVRAM_ERASE_STARTED);
+        mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_FINISHED,     UWLKV_NVRAM_ERASE_FINISHED);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_ERASED_BYTE_VALUE);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
 
-        init_uwlkv(0, 0);
-        CHECK(0 == compare_stored_values(values));
-
-        uwlkv_set_value(10, 10000);
-        values[10] = 10000;
         init_uwlkv(0, 0);
         CHECK(0 == compare_stored_values(values));
     }
@@ -213,4 +205,15 @@ TEST_CASE("Restarts", "[restarts]")
         init_uwlkv(0, 0);
         CHECK(0 == compare_stored_values(values));
     }
+
+    // Finally making sure that library works normally after recovery
+    fill_main(values, UWLKV_MAX_ENTRIES, 100);
+    CHECK(0 == compare_stored_values(values));
+ 
+    init_uwlkv(0, 0);
+    CHECK(0 == compare_stored_values(values));
+    fill_main(values, (capacity * 2), 10000);
+    CHECK(0 == compare_stored_values(values));
+    init_uwlkv(0, 0);
+    CHECK(0 == compare_stored_values(values));
 }
