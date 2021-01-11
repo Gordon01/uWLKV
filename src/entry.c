@@ -69,3 +69,17 @@ uwlkv_error uwlkv_write_entry(uwlkv_offset offset, uwlkv_key key, uwlkv_value va
 
     return UWLKV_E_SUCCESS;
 }
+
+uint8_t uwlkv_is_block_erased(uint8_t * data, const uwlkv_offset size)
+{
+    uint8_t erased_bytes = 0;
+    for (uwlkv_offset i = 0; i < size; i++)
+    {
+        if (data[i] == UWLKV_ERASED_BYTE_VALUE)
+        {
+            erased_bytes += 1;
+        }
+    }
+
+    return erased_bytes == size;
+}

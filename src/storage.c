@@ -94,8 +94,7 @@ static void recover_after_iterrupted_main_erase(void)
 static void recover_after_interrupted_reserve_erase(void)
 {
     nvram_interface.erase_reserve();
-    transfer_main_to_reserve();
-    prepare_area(UWLKV_MAIN);
+    load_map();
 }
 
 static inline uwlkv_offset get_reserve_offset(uwlkv_offset offset)
@@ -147,24 +146,23 @@ static void transfer_main_to_reserve(void)
 
 static uwlkv_nvram_state get_nvram_state(void)
 {
-    uint8_t main_metadata[UWLKV_METADATA_SIZE], reserve_metadata[UWLKV_METADATA_SIZE];
-    nvram_interface.read(main_metadata,    0,                     UWLKV_METADATA_SIZE);
-    nvram_interface.read(reserve_metadata, get_reserve_offset(0), UWLKV_METADATA_SIZE);
+    uint8_t main_metadata[UWLKV_MINIMAL_SIZE], reserve_metadata[UWLKV_MINIMAL_SIZE];
+    nvram_interface.read(main_metadata,    0,                     UWLKV_MINIMAL_SIZE);
+    nvram_interface.read(reserve_metadata, get_reserve_offset(0), UWLKV_MINIMAL_SIZE);
 
     const uint8_t main_started     = UWLKV_NVRAM_ERASE_STARTED  == reserve_metadata[UWLKV_O_ERASE_STARTED];
     const uint8_t reserve_started  = UWLKV_NVRAM_ERASE_STARTED  == main_metadata[UWLKV_O_ERASE_STARTED];
     const uint8_t main_finished    = UWLKV_NVRAM_ERASE_FINISHED == reserve_metadata[UWLKV_O_ERASE_FINISHED];
     const uint8_t reserve_finished = UWLKV_NVRAM_ERASE_FINISHED == main_metadata[UWLKV_O_ERASE_FINISHED];
-    const uint8_t main_clean       = uwlkv_is_block_erased(main_metadata, UWLKV_METADATA_SIZE);
-    const uint8_t reserve_clean    = uwlkv_is_block_erased(reserve_metadata, UWLKV_METADATA_SIZE);
+    const uint8_t main_clean       = uwlkv_is_block_erased(main_metadata, UWLKV_MINIMAL_SIZE);
+    const uint8_t reserve_clean    = uwlkv_is_block_erased(reserve_metadata, UWLKV_MINIMAL_SIZE);
 
     if (reserve_finished && reserve_clean)
     {
         return UWLKV_S_CLEAN;
     }
 
-    if (    (main_clean   && main_started)
-        ||  (main_started && !main_finished) )
+    if ((main_started || main_finished) && !main_clean)
     {
         return UWLKV_S_MAIN_ERASE_INTERRUPTED;
     }

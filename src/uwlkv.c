@@ -37,7 +37,7 @@ uwlkv_key uwlkv_init(uwlkv_nvram_interface * interface)
 
     uwlkv_initialized = 1;
 
-    return reserve_capacity;
+    return main_capacity;
 }
 
 /**
@@ -125,18 +125,4 @@ uwlkv_key uwlkv_get_entries_number(void)
 uwlkv_key uwlkv_get_free_entries(void)
 {
     return uwlkv_get_free_space();
-}
-
-uint8_t uwlkv_is_block_erased(uint8_t * data, const uwlkv_offset size)
-{
-    uint8_t erased_bytes = 0;
-    for (uwlkv_offset i = 0; i < size; i++)
-    {
-        if (data[i] == UWLKV_ERASED_BYTE_VALUE)
-        {
-            erased_bytes += 1;
-        }
-    }
-
-    return erased_bytes == size;
 }

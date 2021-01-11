@@ -116,6 +116,7 @@ TEST_CASE("Restarts", "[restarts]")
     const auto capacity = erase_nvram(0, 0);
     std::map<uwlkv_key, uwlkv_value> values;
 
+    // Prepare a state where main area is fully filled
     for(uwlkv_offset i = 0; i < capacity; i++)
     {
         const uwlkv_key   key   = (uwlkv_key)(i % UWLKV_MAX_ENTRIES);
@@ -128,23 +129,86 @@ TEST_CASE("Restarts", "[restarts]")
 
     const auto entries = uwlkv_get_entries_number();
     CHECK(entries == values.size());
-    init_uwlkv(0, 0);
+    CHECK(entries == UWLKV_MAX_ENTRIES);
 
-    // Checking that after restart we have same amount of entries
-    CHECK(entries == uwlkv_get_entries_number());
-    CHECK(0 == compare_stored_values(values));
+    SECTION("No wrap")
+    {
+        init_uwlkv(0, 0);
+        // Checking that after restart we have same amount of entries
+        CHECK(entries == uwlkv_get_entries_number());
+        CHECK(0 == compare_stored_values(values));
+    }
 
-    // Add one value to force a rewrite
-    uwlkv_set_value(10, 10000);
-    values[10] = 10000;
-    init_uwlkv(0, 0);
-    CHECK(0 == compare_stored_values(values));
+    SECTION("Basic wrap")
+    {
+        // Add one value to force a rewrite
+        uwlkv_set_value(10, 10000);
+        values[10] = 10000;
+        init_uwlkv(0, 0);
+        CHECK(0 == compare_stored_values(values));
 
-    // Finally setting some more values and making sure they present after restart
-    uwlkv_set_value(10, 11000);
-    uwlkv_set_value(15, 15000);
-    values[10] = 11000;
-    values[15] = 15000;
-    init_uwlkv(0, 0);
-    CHECK(0 == compare_stored_values(values));
+        // Finally setting some more values and making sure they present after restart
+        uwlkv_set_value(10, 11000);
+        uwlkv_set_value(15, 15000);
+        values[10] = 11000;
+        values[15] = 15000;
+        init_uwlkv(0, 0);
+        CHECK(0 == compare_stored_values(values));
+    }
+
+    SECTION("Interrupted erase of main area")
+    {
+        mock_flash_set_erase(RESERVED_AREA, ERASE_DISABLED);
+        uwlkv_set_value(10, 10000);
+
+        mock_flash_set_erase(RESERVED_AREA, ERASE_ENABLED);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, 0);
+        mock_flash_fill_with_random(MAIN_AREA);
+
+        init_uwlkv(0, 0);
+        CHECK(0 == compare_stored_values(values));
+    }
+
+    SECTION("Interrupted erase of reserved area")
+    {
+        mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
+        mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_FINISHED, 0);
+        mock_flash_fill_with_random(RESERVED_AREA);
+
+        init_uwlkv(0, 0);
+        CHECK(0 == compare_stored_values(values));
+    }
+
+    SECTION("Interrupted transfer from main to reserve")
+    {
+        /* Power loss is simulated by filling reserved area with random data but not 
+         * setting flags MAIN_ERASE_STARTED and MAIN_ERASE_FINISHED. Therefore, library 
+         * should discard data in reserved area and erase it */
+        mock_flash_fill_with_random(RESERVED_AREA);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  0);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, 0);
+
+        init_uwlkv(0, 0);
+        CHECK(0 == compare_stored_values(values));
+
+        uwlkv_set_value(10, 10000);
+        values[10] = 10000;
+        init_uwlkv(0, 0);
+        CHECK(0 == compare_stored_values(values));
+    }
+
+    SECTION("Interrupted tranfer from reserve to main")
+    {
+        mock_flash_set_erase(RESERVED_AREA, ERASE_DISABLED);
+        uwlkv_set_value(10, 10000);
+
+        mock_flash_set_erase(RESERVED_AREA, ERASE_ENABLED);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_NVRAM_ERASE_FINISHED);
+        mock_flash_fill_with_random(MAIN_AREA);
+
+        init_uwlkv(0, 0);
+        CHECK(0 == compare_stored_values(values));
+    }
 }
