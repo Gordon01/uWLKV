@@ -21,7 +21,7 @@ uwlkv_offset uwlkv_init(const uwlkv_nvram_interface * interface)
     const uwlkv_offset reserve_capacity = interface->reserved / UWLKV_ENTRY_SIZE;
     const uwlkv_offset main_capacity    = main_size / UWLKV_ENTRY_SIZE;
 
-    const uint8_t reserve_size_wrong   = interface->reserved > interface->size;
+    const uint8_t reserve_size_wrong   = interface->reserved >= interface->size;
     const uint8_t main_smaller_reserve = main_capacity < reserve_capacity;
 
     if (    (reserve_size_wrong)
