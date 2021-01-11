@@ -12,15 +12,12 @@ typedef int(* uwlkv_erase)(void);
 #define UWLKV_ENTRY_SIZE            (sizeof(uwlkv_key) + sizeof(uwlkv_value))
 #define UWLKV_MAX_ENTRIES           (20)           /* Maximum amount of unique keys. Increases RAM consumption */
 #define UWLKV_ERASED_BYTE_VALUE     (0xFF)         /* Value of erased byte of NVRAM */
+
+#define UWLKV_O_ERASE_STARTED       (0)            /* Offset of a "erase started" flag */
+#define UWLKV_O_ERASE_FINISHED      (1)            /* Offset of a "erase finished" flag */
+#define UWLKV_METADATA_SIZE         (2)            /* Number of bytes, that library use in the beginning of each area */
 #define UWLKV_NVRAM_ERASE_STARTED   (0xE2)         /* Magic for "erase started" flag */
 #define UWLKV_NVRAM_ERASE_FINISHED  (0x3E)         /* Magic for "erase finished" flag */
-#define UWLKV_METADATA_SIZE         (2)            /* Number of bytes, that library use in the beginning of each area */
-
-typedef enum
-{
-    UWLKV_MAIN,
-    UWLKV_RESERVED
-} uwlkv_area;
 
 typedef struct
 {
@@ -46,12 +43,26 @@ typedef struct
 typedef enum
 {
     UWLKV_E_SUCCESS,        
-    UWLKV_E_NOT_EXIST,      /* Requested entry does not exist on NVRAM */
-    UWLKV_E_NVRAM_ERROR,    /* NVRAM interface signalled an error during the operation */
-    UWLKV_E_NOT_STARTED,    /* UWLKV haven't been initialized */
-    UWLKV_E_NO_SPACE,       /* No free space in map for new entry */
-    UWLKV_E_WRONG_OFFSET,   /* Provided offset is out of NVRAM bounds */
+    UWLKV_E_NOT_EXIST,                  /* Requested entry does not exist on NVRAM */
+    UWLKV_E_NVRAM_ERROR,                /* NVRAM interface signalled an error during the operation */
+    UWLKV_E_NOT_STARTED,                /* UWLKV haven't been initialized */
+    UWLKV_E_NO_SPACE,                   /* No free space in map for new entry */
+    UWLKV_E_WRONG_OFFSET,               /* Provided offset is out of NVRAM bounds */
 } uwlkv_error;
+
+typedef enum
+{
+    UWLKV_MAIN,
+    UWLKV_RESERVED
+} uwlkv_area;
+
+typedef enum
+{
+    UWLKV_S_BLANK,                      /* NVRAM looks fully erased */
+    UWLKV_S_CLEAN,                      /* Last shutdown was clean */
+    UWLKV_S_MAIN_ERASE_INTERRUPTED,     /* Main area erase was interrupted */
+    UWLKV_S_RESERVE_ERASE_INTERRUPTED   /* Reserved area erase was interrupted */
+} uwlkv_nvram_state;
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +73,7 @@ extern "C" {
     uwlkv_key uwlkv_get_free_entries(void);
     uwlkv_error uwlkv_get_value(uwlkv_key key, uwlkv_value * value);
     uwlkv_error uwlkv_set_value(uwlkv_key key, uwlkv_value value);
+    uint8_t uwlkv_is_block_erased(uint8_t * data, const uwlkv_offset size);
 
 #ifdef __cplusplus
 }

@@ -28,15 +28,7 @@ uwlkv_error uwlkv_read_entry(const uwlkv_offset offset, uwlkv_key * key, uwlkv_v
         return UWLKV_E_NVRAM_ERROR;
     }
 
-    uint8_t erased_bytes = 0;
-    for (uwlkv_offset i = 0; i < UWLKV_ENTRY_SIZE; i++)
-    {
-        if (block[i] == UWLKV_ERASED_BYTE_VALUE)
-        {
-            erased_bytes += 1;
-        }
-    }
-    if (erased_bytes == UWLKV_ENTRY_SIZE)
+    if (uwlkv_is_block_erased(block, UWLKV_ENTRY_SIZE))
     {
         return UWLKV_E_NOT_EXIST;
     }

@@ -21,7 +21,7 @@ set(LCOV_REMOVE_EXTRA "'test/*'")
 cmake_policy(SET CMP0076 NEW)
 add_executable(uwlkv tests/main.cpp)
 target_sources(uwlkv PUBLIC tests/nvram_mock.cpp)
-target_sources(uwlkv PUBLIC tests/tests.cpp src/uwlkv.c src/map.c src/entry.c)
+target_sources(uwlkv PUBLIC tests/tests.cpp src/uwlkv.c src/map.c src/entry.c src/storage.c) 
 
 add_custom_target("coverage")
 add_custom_command(TARGET "coverage" COMMAND gcov ${CMAKE_BINARY_DIR}/CMakeFiles/uwlkv.dir/src/*.c.o)
