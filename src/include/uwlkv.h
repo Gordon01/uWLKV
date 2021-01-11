@@ -4,16 +4,16 @@
 #include <stdint.h>
 
 /* You can change a storage type if you don't need big values for key or value to save some space */
-typedef uint16_t uwlkv_key;         /* Record key */
-typedef int32_t  uwlkv_value;       /* Record value */
-typedef uint32_t uwlkv_offset;      /* NVRAM address. Can be reduced to match memory size and save some RAM */
-typedef int(* uwlkv_erase)(void);
+typedef uint16_t uwlkv_key;                        /* Record key */
+typedef int32_t  uwlkv_value;                      /* Record value */
+typedef uint32_t uwlkv_offset;                     /* NVRAM address. Can be reduced to match memory size and save some RAM */
+typedef int(* uwlkv_erase)(void);                  /* NVRAM erase function prototype */
 
-#define UWLKV_O_ERASE_STARTED       (0)            /* Offset of a "erase started" flag */
-#define UWLKV_O_ERASE_FINISHED      (1)            /* Offset of a "erase finished" flag */
+#define UWLKV_O_ERASE_STARTED       (0)            /* Offset of ERASE_STARTED flag */
+#define UWLKV_O_ERASE_FINISHED      (1)            /* Offset of ERASE_FINISHED flag */
 #define UWLKV_METADATA_SIZE         (2)            /* Number of bytes, that library use in the beginning of each area */
-#define UWLKV_NVRAM_ERASE_STARTED   (0xE2)         /* Magic for "erase started" flag */
-#define UWLKV_NVRAM_ERASE_FINISHED  (0x3E)         /* Magic for "erase finished" flag */
+#define UWLKV_NVRAM_ERASE_STARTED   (0xE2)         /* Magic for ERASE_STARTED flag */
+#define UWLKV_NVRAM_ERASE_FINISHED  (0x3E)         /* Magic for ERASE_FINISHED flag */
 
 #define UWLKV_ENTRY_SIZE            (sizeof(uwlkv_key) + sizeof(uwlkv_value))
 #define UWLKV_MINIMAL_SIZE          (UWLKV_ENTRY_SIZE + UWLKV_METADATA_SIZE)
@@ -29,7 +29,7 @@ typedef struct
 /* You must provide an interface to access storage device. 
  * Read/write functions should use logical address (starting from 0).
  * erase_main() should erase a main (large) area, without touching reserved area.
- * erase_reserve() should erase only a reserved area (starting from reserve_offset)
+ * erase_reserve() should erase only a reserved area.
  */
 typedef struct
 {
@@ -37,8 +37,8 @@ typedef struct
 	int(* write)(uint8_t * data, uwlkv_offset start, uwlkv_offset size);
     uwlkv_erase  erase_main;
     uwlkv_erase  erase_reserve;
-    uwlkv_offset size;
-    uwlkv_offset reserved;
+    uwlkv_offset size;                  /* Total size of provided memory */
+    uwlkv_offset reserved;              /* Reserved area size in that memory */
 } uwlkv_nvram_interface;
 
 typedef enum
@@ -59,7 +59,7 @@ typedef enum
 
 typedef enum
 {
-    UWLKV_S_BLANK,                      /* NVRAM looks fully erased */
+    UWLKV_S_BLANK,                      /* NVRAM is fully erased (new) */
     UWLKV_S_CLEAN,                      /* Last shutdown was clean */
     UWLKV_S_MAIN_ERASE_INTERRUPTED,     /* Main area erase was interrupted */
     UWLKV_S_RESERVE_ERASE_INTERRUPTED   /* Reserved area erase was interrupted */
@@ -69,7 +69,7 @@ typedef enum
 extern "C" {
 #endif
     
-    uwlkv_key uwlkv_init(uwlkv_nvram_interface * nvram_interface);
+    uwlkv_offset uwlkv_init(const uwlkv_nvram_interface * nvram_interface);
     uwlkv_key uwlkv_get_entries_number(void);
     uwlkv_key uwlkv_get_free_entries(void);
     uwlkv_error uwlkv_get_value(uwlkv_key key, uwlkv_value * value);

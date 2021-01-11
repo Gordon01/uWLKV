@@ -36,8 +36,20 @@ uwlkv_error uwlkv_get_entry(const uwlkv_key key, uwlkv_entry ** entry)
     return UWLKV_E_NOT_EXIST;
 }
 
+/**
+ * @brief	Returns a pointer to an entry by it's position in cache
+ *
+ * @param 	number	Entry number
+ *
+ * @returns	Null if it fails, else a pointer to an uwlkv_entry.
+ */
 uwlkv_entry * uwlkv_get_entry_by_id(const uwlkv_key number)
 {
+    if (number >= UWLKV_MAX_ENTRIES)
+    {
+        return 0;
+    }
+
     return &uwlkv_entries[number];
 }
 
@@ -83,6 +95,7 @@ uwlkv_error uwlkv_update_entry(const uwlkv_key key, const uwlkv_offset offset)
     return UWLKV_E_SUCCESS;
 }
 
+/** @brief	Resets map state to default (not containing any entry) */
 void uwlkv_reset_map(void)
 {
     used_entries = 0;

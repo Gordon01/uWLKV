@@ -1,3 +1,8 @@
+/* This module handles a state of two areas of NVRAM: main and reserved. Main is used for normal
+ * operations and reserved is used as a defragmented copy of main when wrap-around is performed
+ * to have an ability to restore data in case of power loss.
+ */
+
 #include "uwlkv.h"
 #include "entry.h"
 #include "map.h"
@@ -15,6 +20,7 @@ static void prepare_area(uwlkv_area area);
 static void transfer_main_to_reserve(void);
 static void transfer_reserve_to_main(void);
 
+/** @brief	Calculates current state of NVRAM and starts appropirate initialization procedure. */
 void uwlkv_cold_boot(void)
 {
     uwlkv_reset_map();
@@ -37,15 +43,17 @@ void uwlkv_cold_boot(void)
     case UWLKV_S_RESERVE_ERASE_INTERRUPTED:
         recover_after_interrupted_reserve_erase();
         break;
+
+    default:
+        prepare_for_first_use();
+        break;
     }
 }
 
 /**
- * @brief	Scans a memory block and indexes its content to uwlkv_entries. It uses linear search
+ * @brief	Scans a main area and indexes its content to uwlkv_entries. It uses linear search
  * 			and stops on a first free memory block. Block considered free if all of its bytes are
  * 			equal to UWLKV_ERASED_BYTE_VALUE.
- *
- * @returns	Number of keys loaded.
  */
 static void load_map(void)
 {
@@ -97,6 +105,13 @@ static void recover_after_interrupted_reserve_erase(void)
     load_map();
 }
 
+/**
+ * @brief	Returns reserve data address with given offset
+ *
+ * @param 	offset	The offset (0 means first byte of reserved area)
+ *
+ * @returns	Absolute offset in NVRAM
+ */
 static inline uwlkv_offset get_reserve_offset(uwlkv_offset offset)
 {
     return nvram_interface.size - nvram_interface.reserved + offset;
@@ -135,7 +150,7 @@ static void transfer_main_to_reserve(void)
     uwlkv_offset reserve_offset = get_reserve_offset(UWLKV_METADATA_SIZE);
     for(uwlkv_key i = 0; i < uwlkv_get_used_entries(); i++)
     {
-        uwlkv_entry * entry = uwlkv_get_entry_by_id(i);
+        const uwlkv_entry * entry = uwlkv_get_entry_by_id(i);
         uwlkv_key key;
         uwlkv_value value;
         uwlkv_read_entry(entry->offset, &key, &value);
@@ -144,9 +159,15 @@ static void transfer_main_to_reserve(void)
     }
 }
 
+/**
+ * @brief	Calculates current NVRAM state, checking for unclean shutdown
+ *
+ * @returns	See uwlkv_nvram_state enum documentation.
+ */
 static uwlkv_nvram_state get_nvram_state(void)
 {
-    uint8_t main_metadata[UWLKV_MINIMAL_SIZE], reserve_metadata[UWLKV_MINIMAL_SIZE];
+    uint8_t main_metadata[UWLKV_MINIMAL_SIZE];
+    uint8_t reserve_metadata[UWLKV_MINIMAL_SIZE];
     nvram_interface.read(main_metadata,    0,                     UWLKV_MINIMAL_SIZE);
     nvram_interface.read(reserve_metadata, get_reserve_offset(0), UWLKV_MINIMAL_SIZE);
 
@@ -177,7 +198,9 @@ static uwlkv_nvram_state get_nvram_state(void)
 }
 
 /**
- * @brief	Erases specified area with progress indication to others area metadata.
+ * @brief	Erases specified area with progress indication in metadata.
+ *
+ * @param 	area	Area to be erased (UWLKV_MAIN or UWLKV_RESERVED)
  */
 static void prepare_area(uwlkv_area area)
 {
@@ -198,10 +221,8 @@ static void prepare_area(uwlkv_area area)
 }
 
 /**
- * @brief	Temporarly loads all values into memory, erases NVRAM and writing data back. The
- * 			purpose is to erase whole NVRAM and start from it's beginning. If this process
- * 			interrupted, data lost occurs. To prevent this, we can write a copy in a reserved
- * 			space in NVRAM.
+ * @brief	Performs a backup of all parameters to reserved area, erases main and starts writing
+ * 			from beginning. All data would be defragmented as a result.
  */
 static void restart_map(void)
 {

@@ -70,7 +70,16 @@ uwlkv_error uwlkv_write_entry(uwlkv_offset offset, uwlkv_key key, uwlkv_value va
     return UWLKV_E_SUCCESS;
 }
 
-uint8_t uwlkv_is_block_erased(uint8_t * data, const uwlkv_offset size)
+/**
+ * @brief	Checks that given block is fully erased (filled with UWLKV_ERASED_BYTE_VALUE)
+ *
+ * @param [in]	data	Data to be tested.
+ * @param 	  	size	Size of data.
+ *
+ * @returns	- 0 block is not erased
+ * 			- 1 block is erased.
+ */
+uint8_t uwlkv_is_block_erased(const uint8_t * data, const uwlkv_offset size)
 {
     uint8_t erased_bytes = 0;
     for (uwlkv_offset i = 0; i < size; i++)
