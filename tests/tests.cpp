@@ -163,7 +163,7 @@ TEST_CASE("Restarts", "[restarts]")
 
         mock_flash_set_erase(RESERVED_AREA, ERASE_ENABLED);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
-        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, 0);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
         mock_flash_fill_with_random(MAIN_AREA);
 
         init_uwlkv(0, 0);
@@ -173,7 +173,7 @@ TEST_CASE("Restarts", "[restarts]")
     SECTION("Interrupted erase of reserved area")
     {
         mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
-        mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_FINISHED, 0);
+        mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
         mock_flash_fill_with_random(RESERVED_AREA);
 
         init_uwlkv(0, 0);
@@ -186,8 +186,8 @@ TEST_CASE("Restarts", "[restarts]")
          * setting flags MAIN_ERASE_STARTED and MAIN_ERASE_FINISHED. Therefore, library 
          * should discard data in reserved area and erase it */
         mock_flash_fill_with_random(RESERVED_AREA);
-        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  0);
-        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, 0);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_ERASED_BYTE_VALUE);
+        mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
 
         init_uwlkv(0, 0);
         CHECK(0 == compare_stored_values(values));
@@ -204,9 +204,11 @@ TEST_CASE("Restarts", "[restarts]")
         uwlkv_set_value(10, 10000);
 
         mock_flash_set_erase(RESERVED_AREA, ERASE_ENABLED);
+        mock_flash_fill_with_random(MAIN_AREA);
+        mock_flash_set(MAIN_AREA,     UWLKV_O_ERASE_STARTED,  UWLKV_ERASED_BYTE_VALUE);
+        mock_flash_set(MAIN_AREA,     UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_NVRAM_ERASE_FINISHED);
-        mock_flash_fill_with_random(MAIN_AREA);
 
         init_uwlkv(0, 0);
         CHECK(0 == compare_stored_values(values));
