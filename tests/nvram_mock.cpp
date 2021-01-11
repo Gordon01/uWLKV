@@ -45,9 +45,17 @@ int mock_flash_write(uint8_t * data, uint32_t start, uint32_t length)
 	return 0;
 }
 
-int mock_flash_erase(void)
+int mock_flash_erase_main(void)
 {
-	memset(flash_memory, 0xFF, FLASH_REGION_SIZE); 
+	memset(flash_memory, 0xFF, FLASH_REGION_SIZE - FLASH_RESERVE_SIZE); 
+
+	return 0;
+}
+
+int mock_flash_erase_reserve(void)
+{
+	memset(flash_memory + (FLASH_REGION_SIZE - FLASH_RESERVE_SIZE), 
+		   0xFF, FLASH_RESERVE_SIZE); 
 
 	return 0;
 }

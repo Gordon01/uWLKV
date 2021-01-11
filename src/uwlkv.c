@@ -13,10 +13,19 @@ uint8_t uwlkv_initialized = 0;
  * @returns	- Calculated NVRAM capacity in entries or
  * 			- 0 if NVRAM size is too small to fit all entries.
  */
-uwlkv_offset uwlkv_init(uwlkv_nvram_interface * interface)
+uwlkv_key uwlkv_init(uwlkv_nvram_interface * interface)
 {
-    const uwlkv_key capacity = interface->size / UWLKV_ENTRY_SIZE;
-    if (capacity <= UWLKV_MAX_ENTRIES)
+    const uwlkv_offset main_size        = interface->size - interface->reserved;
+    const uwlkv_key    reserve_capacity = interface->reserved / UWLKV_ENTRY_SIZE;
+    const uwlkv_key    main_capacity    = main_size / UWLKV_ENTRY_SIZE;
+
+    const uint8_t reserve_size_wrong   = interface->reserved > interface->size;
+    const uint8_t main_smaller_reserve = main_capacity < reserve_capacity;
+
+    if (    (reserve_size_wrong)
+        ||  (main_smaller_reserve)
+        ||  (main_capacity    <= UWLKV_MAX_ENTRIES)
+        ||  (reserve_capacity <= UWLKV_MAX_ENTRIES) )
     {
         return 0;
     }
@@ -27,7 +36,7 @@ uwlkv_offset uwlkv_init(uwlkv_nvram_interface * interface)
 
     uwlkv_initialized = 1;
 
-    return capacity;
+    return reserve_capacity;
 }
 
 /**

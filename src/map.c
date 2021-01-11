@@ -49,6 +49,54 @@ uwlkv_key uwlkv_load_map(void)
     return used_entries;
 }
 
+static uwlkv_offset get_reserve_offset(uwlkv_offset offset)
+{
+    return nvram_interface.size - nvram_interface.reserved + offset;
+}
+
+/**
+ * @brief	Makes sure that reserved area is erased, and performs erase if needed.
+ */
+static void prepare_reserve(void)
+{
+    uint8_t metadata[UWLKV_METADATA_SIZE];
+    nvram_interface.read(metadata, get_reserve_offset(0), UWLKV_METADATA_SIZE);
+    uint8_t dirty = 0;
+    for (uwlkv_offset i = 0; i < UWLKV_METADATA_SIZE; i++)
+    {
+        if (metadata[i] != UWLKV_ERASED_BYTE_VALUE)
+        {
+            dirty = 1;
+        }
+    }
+    
+    if (dirty)
+    {
+        nvram_interface.erase_reserve();
+    }
+}
+
+/**
+ * @brief	Erases specified area with progress indication to others area metadata.
+ */
+static void prepare_area(uwlkv_area area)
+{
+    uint8_t operation_flag = UWLKV_NVRAM_ERASE_STARTED;
+    uwlkv_offset base_address = 0;
+    uwlkv_erase  erase_function = nvram_interface.erase_main;
+
+    if (UWLKV_RESERVED == area)
+    {
+        base_address   = get_reserve_offset(0);
+        erase_function = nvram_interface.erase_reserve;
+    }
+    
+    nvram_interface.write(&operation_flag, base_address, 1);
+    erase_function();
+    operation_flag = UWLKV_NVRAM_ERASE_FINISHED;
+    nvram_interface.write(&operation_flag, base_address + 1, 1);
+}
+
 /**
  * @brief	Temporarly loads all values into memory, erases NVRAM and writing data back. The
  * 			purpose is to erase whole NVRAM and start from it's beginning. If this process
@@ -57,28 +105,36 @@ uwlkv_key uwlkv_load_map(void)
  */
 static void restart_map(void)
 {
-    uwlkv_value uwlkv_values[UWLKV_MAX_ENTRIES];
+    prepare_reserve();
 
+    uwlkv_offset reserve_offset = get_reserve_offset(UWLKV_METADATA_SIZE);
     for(uwlkv_key i = 0; i < used_entries; i++)
     {
         uwlkv_entry * entry = &uwlkv_entries[i];
         uwlkv_key key;
         uwlkv_value value;
         uwlkv_read_entry(entry->offset, &key, &value);
-        uwlkv_values[i] = value;
+        uwlkv_write_entry(reserve_offset, key, value);
+        reserve_offset += UWLKV_ENTRY_SIZE;
     }
 
-    nvram_interface.erase();
-    next_block = 0;
+    prepare_area(UWLKV_MAIN);
 
+    next_block = 0;
+    reserve_offset = get_reserve_offset(UWLKV_METADATA_SIZE);
     for(uwlkv_key i = 0; i < used_entries; i++)
     {
+        uwlkv_value value;
         uwlkv_entry * entry = &uwlkv_entries[i];
-        uwlkv_value value   = uwlkv_values[i];
-        entry->offset   = next_block;
+        uwlkv_read_entry(reserve_offset, &entry->key, &value);
+        entry->offset = next_block;
         uwlkv_write_entry(next_block, entry->key, value);
-        next_block += UWLKV_ENTRY_SIZE;
+
+        next_block     += UWLKV_ENTRY_SIZE;
+        reserve_offset += UWLKV_ENTRY_SIZE;
     }
+
+    prepare_area(UWLKV_RESERVED);
 }
 
 /**
