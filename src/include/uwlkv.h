@@ -8,6 +8,8 @@ typedef uint16_t uwlkv_key;                        /* Record key */
 typedef int32_t  uwlkv_value;                      /* Record value */
 typedef uint32_t uwlkv_offset;                     /* NVRAM address. Can be reduced to match memory size and save some RAM */
 typedef int(* uwlkv_erase)(void);                  /* NVRAM erase function prototype */
+typedef uint8_t * (* uwlkv_double_capacity)(void); /* Cache double function prototype */
+
 
 #define UWLKV_O_ERASE_STARTED       (0)            /* Offset of ERASE_STARTED flag */
 #define UWLKV_O_ERASE_FINISHED      (1)            /* Offset of ERASE_FINISHED flag */
@@ -43,14 +45,14 @@ typedef struct
 
 /* You also need to choose the way to cache entry position. You can either:
  * - disable cache entirely, by passing NULL as .cache value,
- * - have static cache, by passing NULL as .increase_capacity value,
- * - have dynamic cache, by providing cache doubling function increase_capacity().
+ * - have static cache, by passing NULL as .double_capacity value,
+ * - have dynamic cache, by providing cache doubling function double_capacity().
  */
 typedef struct
 {
     uint8_t * cache;                    /* Pointer to entry cache */
     uwlkv_key capacity;                 /* Capacity of the cache in uwlkv_entry number */
-    uint8_t * (* increase_capacity)(void);
+    uwlkv_double_capacity double_capacity;
 } uwlkv_cache_interface;
 
 typedef enum

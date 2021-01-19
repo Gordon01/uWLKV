@@ -5,7 +5,8 @@
 #include "nvram_mock.h"
 #include "uwlkv.h"
 
-uwlkv_offset init_uwlkv(uwlkv_offset size, uwlkv_offset reserved)
+uwlkv_offset init_uwlkv(const uwlkv_offset size, const uwlkv_offset reserved,
+                        const uwlkv_key capacity, uwlkv_double_capacity double_capacity)
 {
     uwlkv_nvram_interface nvram_interface;
     nvram_interface.read          = &mock_flash_read;
@@ -31,7 +32,8 @@ uwlkv_offset init_uwlkv(uwlkv_offset size, uwlkv_offset reserved)
     }
     
     uwlkv_cache_interface cache_interface;
-    cache_interface.increase_capacity = NULL;
+    cache_interface.capacity        = capacity;
+    cache_interface.double_capacity = double_capacity;
 
     return uwlkv_init(&nvram_interface, &cache_interface);
 }
@@ -40,14 +42,14 @@ uwlkv_offset erase_nvram(uwlkv_offset size, uwlkv_offset reserved)
 {
     mock_nvram_init();
 
-    return init_uwlkv(size, reserved);
+    return init_uwlkv(size, reserved, UWLKV_MAX_ENTRIES, NULL);
 }
 
 TEST_CASE("Initialization", "[init]")
 {
     auto ret = erase_nvram(100, 90);
     CHECK(0 == ret);
-    ret = init_uwlkv(0, 0);
+    ret = init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
     CHECK(((FLASH_REGION_SIZE - FLASH_RESERVE_SIZE) / UWLKV_ENTRY_SIZE) == ret);
 
     auto entries = uwlkv_get_entries_number();
@@ -141,7 +143,7 @@ TEST_CASE("Data wraps", "[wraps]")
 
     SECTION("No wrap")
     {
-        init_uwlkv(0, 0);
+        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
         CHECK(0 == compare_stored_values(values));
     }
 
@@ -150,7 +152,7 @@ TEST_CASE("Data wraps", "[wraps]")
         // Add one value to force a rewrite
         uwlkv_set_value(10, 10000);
         values[10] = 10000;
-        init_uwlkv(0, 0);
+        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
         CHECK(0 == compare_stored_values(values));
     }
 
@@ -164,7 +166,7 @@ TEST_CASE("Data wraps", "[wraps]")
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
 
-        init_uwlkv(0, 0);
+        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
         CHECK(0 == compare_stored_values(values));
     }
 
@@ -174,7 +176,7 @@ TEST_CASE("Data wraps", "[wraps]")
         mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
 
-        init_uwlkv(0, 0);
+        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
         CHECK(0 == compare_stored_values(values));
     }
 
@@ -189,7 +191,7 @@ TEST_CASE("Data wraps", "[wraps]")
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_ERASED_BYTE_VALUE);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
 
-        init_uwlkv(0, 0);
+        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
         CHECK(0 == compare_stored_values(values));
     }
 
@@ -205,7 +207,7 @@ TEST_CASE("Data wraps", "[wraps]")
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_NVRAM_ERASE_FINISHED);
 
-        init_uwlkv(0, 0);
+        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
         CHECK(0 == compare_stored_values(values));
     }
 
@@ -213,10 +215,10 @@ TEST_CASE("Data wraps", "[wraps]")
     fill_main(values, UWLKV_MAX_ENTRIES, 100);
     CHECK(0 == compare_stored_values(values));
  
-    init_uwlkv(0, 0);
+    init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
     CHECK(0 == compare_stored_values(values));
     fill_main(values, (capacity * 2), 10000);
     CHECK(0 == compare_stored_values(values));
-    init_uwlkv(0, 0);
+    init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
     CHECK(0 == compare_stored_values(values));
 }
