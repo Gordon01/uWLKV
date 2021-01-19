@@ -7,30 +7,33 @@
 
 uwlkv_offset init_uwlkv(uwlkv_offset size, uwlkv_offset reserved)
 {
-    uwlkv_nvram_interface interface;
-    interface.read          = &mock_flash_read;
-    interface.write         = &mock_flash_write;
-    interface.erase_main    = &mock_flash_erase_main;
-    interface.erase_reserve = &mock_flash_erase_reserve;
+    uwlkv_nvram_interface nvram_interface;
+    nvram_interface.read          = &mock_flash_read;
+    nvram_interface.write         = &mock_flash_write;
+    nvram_interface.erase_main    = &mock_flash_erase_main;
+    nvram_interface.erase_reserve = &mock_flash_erase_reserve;
     /* NVRAM size and reserved space should always match actual sizes of memory
      * which your erase function uses. Here we have an option to override default
      * only for test purposes */
-    interface.size 	        = FLASH_REGION_SIZE;
-    interface.reserved      = FLASH_RESERVE_SIZE;
+    nvram_interface.size 	      = FLASH_REGION_SIZE;
+    nvram_interface.reserved      = FLASH_RESERVE_SIZE;
 
     if (size)
     {
-        interface.size      = size < FLASH_REGION_SIZE 
-                            ? size : FLASH_REGION_SIZE;
+        nvram_interface.size      = size < FLASH_REGION_SIZE 
+                                  ? size : FLASH_REGION_SIZE;
     }
 
     if (reserved)
     {
-        interface.reserved  = reserved != FLASH_RESERVE_SIZE 
-                            ? reserved :  FLASH_RESERVE_SIZE;
+        nvram_interface.reserved  = reserved != FLASH_RESERVE_SIZE 
+                                  ? reserved :  FLASH_RESERVE_SIZE;
     }
     
-    return uwlkv_init(&interface);
+    uwlkv_cache_interface cache_interface;
+    cache_interface.increase_capacity = NULL;
+
+    return uwlkv_init(&nvram_interface, &cache_interface);
 }
 
 uwlkv_offset erase_nvram(uwlkv_offset size, uwlkv_offset reserved)

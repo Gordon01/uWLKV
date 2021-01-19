@@ -8,7 +8,8 @@
 #include "map.h"
 #include "storage.h"
 
-extern uwlkv_nvram_interface nvram_interface;
+extern uwlkv_nvram_interface uwlkv_nvram;
+extern uwlkv_cache_interface uwlkv_cache;
 static uwlkv_offset          next_block;
 
 static uwlkv_nvram_state get_nvram_state(void);
@@ -61,7 +62,7 @@ static void load_map(void)
 
     uwlkv_offset offset;
     for (offset =  UWLKV_METADATA_SIZE; 
-        (offset +  UWLKV_ENTRY_SIZE) <= (nvram_interface.size - nvram_interface.reserved); 
+        (offset +  UWLKV_ENTRY_SIZE) <= (uwlkv_nvram.size - uwlkv_nvram.reserved); 
          offset += UWLKV_ENTRY_SIZE)
     {
         uwlkv_key key;
@@ -83,25 +84,25 @@ static void load_map(void)
 
 static void prepare_for_first_use(void)
 {
-    nvram_interface.erase_main();
-    nvram_interface.erase_reserve();
+    uwlkv_nvram.erase_main();
+    uwlkv_nvram.erase_reserve();
 
     uint8_t main_metadata[UWLKV_METADATA_SIZE] = { UWLKV_NVRAM_ERASE_STARTED, UWLKV_NVRAM_ERASE_FINISHED };
-    nvram_interface.write(main_metadata, 0, UWLKV_METADATA_SIZE);
+    uwlkv_nvram.write(main_metadata, 0, UWLKV_METADATA_SIZE);
 
     next_block = UWLKV_METADATA_SIZE;
 }
 
 static void recover_after_iterrupted_main_erase(void)
 {
-    nvram_interface.erase_main();
+    uwlkv_nvram.erase_main();
     transfer_reserve_to_main();
     prepare_area(UWLKV_RESERVED);
 }
 
 static void recover_after_interrupted_reserve_erase(void)
 {
-    nvram_interface.erase_reserve();
+    uwlkv_nvram.erase_reserve();
     load_map();
 }
 
@@ -114,7 +115,7 @@ static void recover_after_interrupted_reserve_erase(void)
  */
 static inline uwlkv_offset get_reserve_offset(uwlkv_offset offset)
 {
-    return nvram_interface.size - nvram_interface.reserved + offset;
+    return uwlkv_nvram.size - uwlkv_nvram.reserved + offset;
 }
 
 static void transfer_reserve_to_main(void)
@@ -123,7 +124,7 @@ static void transfer_reserve_to_main(void)
 
     uwlkv_offset offset;
     for (offset =  UWLKV_METADATA_SIZE; 
-        (offset +  UWLKV_ENTRY_SIZE) <= (nvram_interface.reserved); 
+        (offset +  UWLKV_ENTRY_SIZE) <= (uwlkv_nvram.reserved); 
          offset += UWLKV_ENTRY_SIZE)
     {
         uwlkv_key key;
@@ -168,8 +169,8 @@ static uwlkv_nvram_state get_nvram_state(void)
 {
     uint8_t main_metadata[UWLKV_MINIMAL_SIZE];
     uint8_t reserve_metadata[UWLKV_MINIMAL_SIZE];
-    nvram_interface.read(main_metadata,    0,                     UWLKV_MINIMAL_SIZE);
-    nvram_interface.read(reserve_metadata, get_reserve_offset(0), UWLKV_MINIMAL_SIZE);
+    uwlkv_nvram.read(main_metadata,    0,                     UWLKV_MINIMAL_SIZE);
+    uwlkv_nvram.read(reserve_metadata, get_reserve_offset(0), UWLKV_MINIMAL_SIZE);
 
     const uint8_t main_started     = UWLKV_NVRAM_ERASE_STARTED  == reserve_metadata[UWLKV_O_ERASE_STARTED];
     const uint8_t reserve_started  = UWLKV_NVRAM_ERASE_STARTED  == main_metadata[UWLKV_O_ERASE_STARTED];
@@ -206,18 +207,18 @@ static void prepare_area(uwlkv_area area)
 {
     uint8_t operation_flag = UWLKV_NVRAM_ERASE_STARTED;
     uwlkv_offset base_address = get_reserve_offset(0);
-    uwlkv_erase  erase_function = nvram_interface.erase_main;
+    uwlkv_erase  erase_function = uwlkv_nvram.erase_main;
 
     if (UWLKV_RESERVED == area)
     {
         base_address   = 0;
-        erase_function = nvram_interface.erase_reserve;
+        erase_function = uwlkv_nvram.erase_reserve;
     }
     
-    nvram_interface.write(&operation_flag, base_address, 1);
+    uwlkv_nvram.write(&operation_flag, base_address, 1);
     erase_function();
     operation_flag = UWLKV_NVRAM_ERASE_FINISHED;
-    nvram_interface.write(&operation_flag, base_address + 1, 1);
+    uwlkv_nvram.write(&operation_flag, base_address + 1, 1);
 }
 
 /**
@@ -240,7 +241,7 @@ static void restart_map(void)
  */
 uwlkv_offset uwlkv_get_next_block(void)
 {
-    if ((next_block + UWLKV_ENTRY_SIZE) > (nvram_interface.size - nvram_interface.reserved))
+    if ((next_block + UWLKV_ENTRY_SIZE) > (uwlkv_nvram.size - uwlkv_nvram.reserved))
     {
         restart_map();
     }

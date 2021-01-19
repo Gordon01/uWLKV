@@ -4,7 +4,8 @@
 #include "uwlkv.h"
 #include "entry.h"
 
-extern uwlkv_nvram_interface nvram_interface;
+extern uwlkv_nvram_interface uwlkv_nvram;
+extern uwlkv_cache_interface uwlkv_cache;
 
 /**
  * @brief	Read entry from NVRAM by offset.
@@ -17,13 +18,13 @@ extern uwlkv_nvram_interface nvram_interface;
  */
 uwlkv_error uwlkv_read_entry(const uwlkv_offset offset, uwlkv_key * key, uwlkv_value * value)
 {
-    if ((offset + UWLKV_ENTRY_SIZE) > nvram_interface.size)
+    if ((offset + UWLKV_ENTRY_SIZE) > uwlkv_nvram.size)
     {
         return UWLKV_E_WRONG_OFFSET;
     }
 
     uint8_t block[UWLKV_ENTRY_SIZE];
-    if (nvram_interface.read((uint8_t *)&block, offset, UWLKV_ENTRY_SIZE))
+    if (uwlkv_nvram.read((uint8_t *)&block, offset, UWLKV_ENTRY_SIZE))
     {
         return UWLKV_E_NVRAM_ERROR;
     }
@@ -50,7 +51,7 @@ uwlkv_error uwlkv_read_entry(const uwlkv_offset offset, uwlkv_key * key, uwlkv_v
  */
 uwlkv_error uwlkv_write_entry(uwlkv_offset offset, uwlkv_key key, uwlkv_value value)
 {
-    if ((offset + UWLKV_ENTRY_SIZE) > nvram_interface.size)
+    if ((offset + UWLKV_ENTRY_SIZE) > uwlkv_nvram.size)
     {
         return UWLKV_E_WRONG_OFFSET;
     }
@@ -62,7 +63,7 @@ uwlkv_error uwlkv_write_entry(uwlkv_offset offset, uwlkv_key key, uwlkv_value va
     *key_in_block   = key;
     *value_in_block = value;
 
-    if (nvram_interface.write((uint8_t *)&block, offset, UWLKV_ENTRY_SIZE))
+    if (uwlkv_nvram.write((uint8_t *)&block, offset, UWLKV_ENTRY_SIZE))
     {
         return UWLKV_E_NVRAM_ERROR;
     }

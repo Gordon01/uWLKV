@@ -41,6 +41,18 @@ typedef struct
     uwlkv_offset reserved;              /* Reserved area size in that memory */
 } uwlkv_nvram_interface;
 
+/* You also need to choose the way to cache entry position. You can either:
+ * - disable cache entirely, by passing NULL as .cache value,
+ * - have static cache, by passing NULL as .increase_capacity value,
+ * - have dynamic cache, by providing cache doubling function increase_capacity().
+ */
+typedef struct
+{
+    uint8_t * cache;                    /* Pointer to entry cache */
+    uwlkv_key capacity;                 /* Capacity of the cache in uwlkv_entry number */
+    uint8_t * (* increase_capacity)(void);
+} uwlkv_cache_interface;
+
 typedef enum
 {
     UWLKV_E_SUCCESS,        
@@ -69,7 +81,8 @@ typedef enum
 extern "C" {
 #endif
     
-    uwlkv_offset uwlkv_init(const uwlkv_nvram_interface * nvram_interface);
+    uwlkv_offset uwlkv_init(const uwlkv_nvram_interface * nvram_interface, 
+                            const uwlkv_cache_interface * cache_interface);
     uwlkv_key uwlkv_get_entries_number(void);
     uwlkv_key uwlkv_get_free_entries(void);
     uwlkv_error uwlkv_get_value(uwlkv_key key, uwlkv_value * value);
