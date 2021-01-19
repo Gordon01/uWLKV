@@ -10,76 +10,8 @@
 #include "map.h"
 #include "entry.h"
 
-extern uwlkv_nvram_interface nvram_interface;
 static uwlkv_entry           uwlkv_entries[UWLKV_MAX_ENTRIES];
 static uwlkv_key             used_entries;
-static uwlkv_offset          next_block;
-
-/**
- * @brief	Scans a memory block and indexes its content to uwlkv_entries. It uses linear search
- * 			and stops on a first free memory block. Block considered free if all of its bytes are
- * 			equal to UWLKV_ERASED_BYTE_VALUE.
- *
- * @returns	Number of keys loaded.
- */
-uwlkv_key uwlkv_load_map(void)
-{
-    next_block = 0;
-    used_entries = 0;
-
-    uwlkv_offset offset;
-    for (offset = 0; (offset + UWLKV_ENTRY_SIZE) <= nvram_interface.size; offset += UWLKV_ENTRY_SIZE)
-    {
-        uwlkv_key key;
-        uwlkv_value value;
-        uwlkv_error ret = uwlkv_read_entry(offset, &key, &value);
-
-        if (UWLKV_E_NOT_EXIST == ret)
-        {
-            break;
-        }
-
-        if (UWLKV_E_SUCCESS == ret)
-        {
-            uwlkv_update_entry(key, offset);
-        }
-    }
-    next_block = offset;
-
-    return used_entries;
-}
-
-/**
- * @brief	Temporarly loads all values into memory, erases NVRAM and writing data back. The
- * 			purpose is to erase whole NVRAM and start from it's beginning. If this process
- * 			interrupted, data lost occurs. To prevent this, we can write a copy in a reserved
- * 			space in NVRAM.
- */
-static void restart_map(void)
-{
-    uwlkv_value uwlkv_values[UWLKV_MAX_ENTRIES];
-
-    for(uwlkv_key i = 0; i < used_entries; i++)
-    {
-        uwlkv_entry * entry = &uwlkv_entries[i];
-        uwlkv_key key;
-        uwlkv_value value;
-        uwlkv_read_entry(entry->offset, &key, &value);
-        uwlkv_values[i] = value;
-    }
-
-    nvram_interface.erase();
-    next_block = 0;
-
-    for(uwlkv_key i = 0; i < used_entries; i++)
-    {
-        uwlkv_entry * entry = &uwlkv_entries[i];
-        uwlkv_value value   = uwlkv_values[i];
-        entry->offset   = next_block;
-        uwlkv_write_entry(next_block, entry->key, value);
-        next_block += UWLKV_ENTRY_SIZE;
-    }
-}
 
 /**
  * @brief	Returns a pointer to an entry with provided key.
@@ -102,6 +34,23 @@ uwlkv_error uwlkv_get_entry(const uwlkv_key key, uwlkv_entry ** entry)
     }
 
     return UWLKV_E_NOT_EXIST;
+}
+
+/**
+ * @brief	Returns a pointer to an entry by it's position in cache
+ *
+ * @param 	number	Entry number
+ *
+ * @returns	Null if it fails, else a pointer to an uwlkv_entry.
+ */
+uwlkv_entry * uwlkv_get_entry_by_id(const uwlkv_key number)
+{
+    if (number >= UWLKV_MAX_ENTRIES)
+    {
+        return 0;
+    }
+
+    return &uwlkv_entries[number];
 }
 
 /**
@@ -146,6 +95,12 @@ uwlkv_error uwlkv_update_entry(const uwlkv_key key, const uwlkv_offset offset)
     return UWLKV_E_SUCCESS;
 }
 
+/** @brief	Resets map state to default (not containing any entry) */
+void uwlkv_reset_map(void)
+{
+    used_entries = 0;
+}
+
 /**
  * @brief	Returns a number of stored unique keys.
  *
@@ -164,22 +119,4 @@ uwlkv_key uwlkv_get_used_entries(void)
 uwlkv_key uwlkv_get_free_space(void)
 {
     return UWLKV_MAX_ENTRIES - used_entries;
-}
-
-/**
- * @brief	Reserves memory for one data block and returns an offset to its first byte. If all
- * 			NVRAM is used, it would be erased.
- *
- * @returns	Starting position of new block.
- */
-uwlkv_offset uwlkv_get_next_block(void)
-{
-    if ((next_block + UWLKV_ENTRY_SIZE) > nvram_interface.size)
-    {
-        restart_map();
-    }
-
-    next_block += UWLKV_ENTRY_SIZE;
-
-    return next_block - UWLKV_ENTRY_SIZE;
 }

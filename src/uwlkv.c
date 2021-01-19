@@ -1,6 +1,7 @@
 #include "uwlkv.h"
 #include "entry.h"
 #include "map.h"
+#include "storage.h"
 
 uwlkv_nvram_interface nvram_interface;
 uint8_t uwlkv_initialized = 0;
@@ -10,24 +11,34 @@ uint8_t uwlkv_initialized = 0;
  *
  * @param [in]	interface	NVRAM access insterface.
  *
- * @returns	- Calculated NVRAM capacity in entries or
+ * @returns	- NVRAM capacity in entries. This value, divided by UWLKV_MAX_ENTRIES gives you an
+ * 			expected leveling factor or write cycles multiplier.
  * 			- 0 if NVRAM size is too small to fit all entries.
  */
-uwlkv_offset uwlkv_init(uwlkv_nvram_interface * interface)
+uwlkv_offset uwlkv_init(const uwlkv_nvram_interface * interface)
 {
-    const uwlkv_key capacity = interface->size / UWLKV_ENTRY_SIZE;
-    if (capacity <= UWLKV_MAX_ENTRIES)
+    const uwlkv_offset main_size        = interface->size - interface->reserved;
+    const uwlkv_offset reserve_capacity = interface->reserved / UWLKV_ENTRY_SIZE;
+    const uwlkv_offset main_capacity    = main_size / UWLKV_ENTRY_SIZE;
+
+    const uint8_t reserve_size_wrong   = interface->reserved >= interface->size;
+    const uint8_t main_smaller_reserve = main_capacity < reserve_capacity;
+
+    if (    (reserve_size_wrong)
+        ||  (main_smaller_reserve)
+        ||  (main_capacity    <= UWLKV_MAX_ENTRIES)
+        ||  (reserve_capacity <= UWLKV_MAX_ENTRIES) )
     {
         return 0;
     }
 
     nvram_interface = *interface;
 
-    uwlkv_load_map();
+    uwlkv_cold_boot();
 
     uwlkv_initialized = 1;
 
-    return capacity;
+    return main_capacity;
 }
 
 /**

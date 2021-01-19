@@ -28,15 +28,7 @@ uwlkv_error uwlkv_read_entry(const uwlkv_offset offset, uwlkv_key * key, uwlkv_v
         return UWLKV_E_NVRAM_ERROR;
     }
 
-    uint8_t erased_bytes = 0;
-    for (uwlkv_offset i = 0; i < UWLKV_ENTRY_SIZE; i++)
-    {
-        if (block[i] == UWLKV_ERASED_BYTE_VALUE)
-        {
-            erased_bytes += 1;
-        }
-    }
-    if (erased_bytes == UWLKV_ENTRY_SIZE)
+    if (uwlkv_is_block_erased(block, UWLKV_ENTRY_SIZE))
     {
         return UWLKV_E_NOT_EXIST;
     }
@@ -76,4 +68,27 @@ uwlkv_error uwlkv_write_entry(uwlkv_offset offset, uwlkv_key key, uwlkv_value va
     }
 
     return UWLKV_E_SUCCESS;
+}
+
+/**
+ * @brief	Checks that given block is fully erased (filled with UWLKV_ERASED_BYTE_VALUE)
+ *
+ * @param [in]	data	Data to be tested.
+ * @param 	  	size	Size of data (in bytes).
+ *
+ * @returns	- 0 block is not erased
+ * 			- 1 block is erased.
+ */
+uint8_t uwlkv_is_block_erased(const uint8_t * data, const uwlkv_offset size)
+{
+    uint8_t erased_bytes = 0;
+    for (uwlkv_offset i = 0; i < size; i++)
+    {
+        if (data[i] == UWLKV_ERASED_BYTE_VALUE)
+        {
+            erased_bytes += 1;
+        }
+    }
+
+    return erased_bytes == size;
 }
