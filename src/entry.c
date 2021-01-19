@@ -74,7 +74,7 @@ uwlkv_error uwlkv_write_entry(uwlkv_offset offset, uwlkv_key key, uwlkv_value va
  * @brief	Checks that given block is fully erased (filled with UWLKV_ERASED_BYTE_VALUE)
  *
  * @param [in]	data	Data to be tested.
- * @param 	  	size	Size of data.
+ * @param 	  	size	Size of data (in bytes).
  *
  * @returns	- 0 block is not erased
  * 			- 1 block is erased.
