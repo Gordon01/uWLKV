@@ -87,9 +87,9 @@ uwlkv_error uwlkv_set_value(uwlkv_key key, uwlkv_value value)
     uwlkv_offset offset = uwlkv_get_next_block();
     uwlkv_offset last_offset;
     uwlkv_entry * entry;
-    const uint8_t new_entry = UWLKV_E_SUCCESS == uwlkv_get_entry(key, &entry) ? 0 : 1;
+    const uint8_t old_entry = UWLKV_E_SUCCESS == uwlkv_get_entry(key, &entry);
 
-    if (0 == new_entry)
+    if (old_entry)
     {
         // If entry already exists, save its offset in case of write error
         last_offset = entry->offset;
@@ -103,7 +103,7 @@ uwlkv_error uwlkv_set_value(uwlkv_key key, uwlkv_value value)
 
     uwlkv_error write = uwlkv_write_entry(offset, key, value);
     if (    (UWLKV_E_SUCCESS != write)
-        &&  (new_entry) )
+        &&  (old_entry) )
     {
         // On failed write, restore original entry offset
         uwlkv_update_entry(key, last_offset);
