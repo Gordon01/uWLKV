@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.com/Gordon01/uWLKV.svg?branch=master)](https://travis-ci.com/Gordon01/uWLKV)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=Gordon01_uWLKV&metric=code_smells)](https://sonarcloud.io/dashboard?id=Gordon01_uWLKV)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Gordon01_uWLKV&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=Gordon01_uWLKV)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=Gordon01_uWLKV&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=Gordon01_uWLKV)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Gordon01_uWLKV&metric=bugs)](https://sonarcloud.io/dashboard?id=Gordon01_uWLKV)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Gordon01_uWLKV&metric=coverage)](https://sonarcloud.io/dashboard?id=Gordon01_uWLKV)
 
 # uWLKV
