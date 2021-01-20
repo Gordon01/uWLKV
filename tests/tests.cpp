@@ -1,55 +1,16 @@
+#include <map>
 #include <stdint.h>
 #include <string.h>
-#include <map>
 #include "catch.hpp"
 #include "nvram_mock.h"
 #include "uwlkv.h"
-
-uwlkv_offset init_uwlkv(const uwlkv_offset size, const uwlkv_offset reserved,
-                        const uwlkv_key capacity, uwlkv_double_capacity double_capacity)
-{
-    uwlkv_nvram_interface nvram_interface;
-    nvram_interface.read          = &mock_flash_read;
-    nvram_interface.write         = &mock_flash_write;
-    nvram_interface.erase_main    = &mock_flash_erase_main;
-    nvram_interface.erase_reserve = &mock_flash_erase_reserve;
-    /* NVRAM size and reserved space should always match actual sizes of memory
-     * which your erase function uses. Here we have an option to override default
-     * only for test purposes */
-    nvram_interface.size 	      = FLASH_REGION_SIZE;
-    nvram_interface.reserved      = FLASH_RESERVE_SIZE;
-
-    if (size)
-    {
-        nvram_interface.size      = size < FLASH_REGION_SIZE 
-                                  ? size : FLASH_REGION_SIZE;
-    }
-
-    if (reserved)
-    {
-        nvram_interface.reserved  = reserved != FLASH_RESERVE_SIZE 
-                                  ? reserved :  FLASH_RESERVE_SIZE;
-    }
-    
-    uwlkv_cache_interface cache_interface;
-    cache_interface.capacity        = capacity;
-    cache_interface.double_capacity = double_capacity;
-
-    return uwlkv_init(&nvram_interface, &cache_interface);
-}
-
-uwlkv_offset erase_nvram(uwlkv_offset size, uwlkv_offset reserved)
-{
-    mock_nvram_init();
-
-    return init_uwlkv(size, reserved, UWLKV_MAX_ENTRIES, NULL);
-}
+#include "helpers.h"
 
 TEST_CASE("Initialization", "[init]")
 {
-    auto ret = erase_nvram(100, 90);
+    auto ret = tests_erase_nvram(100, 90);
     CHECK(0 == ret);
-    ret = init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
+    ret = tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
     CHECK(((FLASH_REGION_SIZE - FLASH_RESERVE_SIZE) / UWLKV_ENTRY_SIZE) == ret);
 
     auto entries = uwlkv_get_entries_number();
@@ -100,42 +61,13 @@ TEST_CASE("Writing and reading values", "[read_write]")
     }
 }
 
-uint8_t compare_stored_values(std::map<uwlkv_key, uwlkv_value> &map)
-{
-    auto errors = 0;
-    for (auto const& entry : map)
-    {
-        uwlkv_value value;
-        uwlkv_get_value(entry.first, &value);
-        if (value != entry.second)
-        {
-            errors += 1;
-        }
-    }
-
-    return (errors != 0);
-}
-
-void fill_main(std::map<uwlkv_key, uwlkv_value> &map, uwlkv_offset number, uwlkv_value starting_value)
-{
-    for(uwlkv_offset i = 0; i < number; i++)
-    {
-        const uwlkv_key   key   = (uwlkv_key)(i % UWLKV_MAX_ENTRIES);
-        const uwlkv_value value = (uwlkv_value)i + starting_value;
-        if (UWLKV_E_SUCCESS == uwlkv_set_value(key, value))
-        {
-            map[key] = value;
-        }
-    }
-}
-
 TEST_CASE("Data wraps", "[wraps]")
 {
-    const auto capacity = erase_nvram(0, 0);
+    const auto capacity = tests_erase_nvram(0, 0);
     std::map<uwlkv_key, uwlkv_value> values;
 
     // Prepare a state where main area is fully filled
-    fill_main(values, capacity, 0);
+    tests_fill_main(values, capacity, 0);
 
     const auto entries = uwlkv_get_entries_number();
     CHECK(entries == values.size());
@@ -143,8 +75,8 @@ TEST_CASE("Data wraps", "[wraps]")
 
     SECTION("No wrap")
     {
-        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
-        CHECK(0 == compare_stored_values(values));
+        tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
+        CHECK(0 == tests_compare_stored_values(values));
     }
 
     SECTION("Basic wrap")
@@ -152,8 +84,8 @@ TEST_CASE("Data wraps", "[wraps]")
         // Add one value to force a rewrite
         uwlkv_set_value(10, 10000);
         values[10] = 10000;
-        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
-        CHECK(0 == compare_stored_values(values));
+        tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
+        CHECK(0 == tests_compare_stored_values(values));
     }
 
     SECTION("Interrupted erase of main area")
@@ -166,8 +98,8 @@ TEST_CASE("Data wraps", "[wraps]")
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
 
-        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
-        CHECK(0 == compare_stored_values(values));
+        tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
+        CHECK(0 == tests_compare_stored_values(values));
     }
 
     SECTION("Interrupted erase of reserved area")
@@ -176,8 +108,8 @@ TEST_CASE("Data wraps", "[wraps]")
         mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(MAIN_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
 
-        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
-        CHECK(0 == compare_stored_values(values));
+        tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
+        CHECK(0 == tests_compare_stored_values(values));
     }
 
     SECTION("Interrupted transfer from main to reserve")
@@ -191,8 +123,8 @@ TEST_CASE("Data wraps", "[wraps]")
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_ERASED_BYTE_VALUE);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_ERASED_BYTE_VALUE);
 
-        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
-        CHECK(0 == compare_stored_values(values));
+        tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
+        CHECK(0 == tests_compare_stored_values(values));
     }
 
     SECTION("Interrupted tranfer from reserve to main")
@@ -207,18 +139,18 @@ TEST_CASE("Data wraps", "[wraps]")
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_STARTED,  UWLKV_NVRAM_ERASE_STARTED);
         mock_flash_set(RESERVED_AREA, UWLKV_O_ERASE_FINISHED, UWLKV_NVRAM_ERASE_FINISHED);
 
-        init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
-        CHECK(0 == compare_stored_values(values));
+        tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
+        CHECK(0 == tests_compare_stored_values(values));
     }
 
     // Finally making sure that library works normally after recovery
-    fill_main(values, UWLKV_MAX_ENTRIES, 100);
-    CHECK(0 == compare_stored_values(values));
+    tests_fill_main(values, UWLKV_MAX_ENTRIES, 100);
+    CHECK(0 == tests_compare_stored_values(values));
  
-    init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
-    CHECK(0 == compare_stored_values(values));
-    fill_main(values, (capacity * 2), 10000);
-    CHECK(0 == compare_stored_values(values));
-    init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, NULL);
-    CHECK(0 == compare_stored_values(values));
+    tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
+    CHECK(0 == tests_compare_stored_values(values));
+    tests_fill_main(values, (capacity * 2), 10000);
+    CHECK(0 == tests_compare_stored_values(values));
+    tests_init_uwlkv(0, 0, UWLKV_MAX_ENTRIES, nullptr);
+    CHECK(0 == tests_compare_stored_values(values));
 }
