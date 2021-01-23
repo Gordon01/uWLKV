@@ -36,7 +36,7 @@ TEST_CASE("Initialization", "[init]")
 TEST_CASE("Writing and reading values", "[read_write]")
 {
     auto cache_type = GENERATE(TESTS_NO_CACHE, TESTS_STATIC, TESTS_DYNAMIC);
-    tests_erase_nvram(cache_type);
+    tests_init_uwlkv(cache_type);
 
     SECTION("Easy values")
     {

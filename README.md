@@ -6,9 +6,9 @@
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=Gordon01_uWLKV&metric=ncloc)](https://sonarcloud.io/dashboard?id=Gordon01_uWLKV)
 
 # uWLKV
-Micro wear-leveling key-value storage library for microcontrollers.
+Micro wear-leveling key-value storage library for microcontrollers in **pure C**.
 
-This library greatly simplifies the implementation of the wear-leveling technique. Most microcontrollers have a small amount of NVRAM (either Flash or EEPROM) presented as an array of bytes and the endurance of each byte is often limited by 100k writes, which is sometimes inconvenient of you need to save something frequently or you don't want to limit user's actions. However, if EEPROM usage is low, we can use its free space to level wear by not writing twice to the same position. 
+This library simplifies the implementation of the wear-leveling technique. Most microcontrollers have a small amount of NVRAM (either Flash or EEPROM) presented as an array of bytes and the endurance of each byte is often limited by 100k writes, which is sometimes inconvenient of you need to save something frequently or you don't want to limit user's actions. However, if NVRAM usage is low, we can use its free space to level wear by not writing twice to the same position. 
 
 The idea behind this library is to make all write into the next free NVRAM block. By doing this we wear out all available NVRAM bytes evenly. This is particularly efficient if only a few parameters are changed often because they will have the most available free space. If there is no free space to save another parameter, the whole NVRAM erased, defragmented and writing will continue from the beginning, after restoring currently saved parameters. This is particularly handy because some microcontrollers can only erase big pages in FLASH and we are not limited by this.
 
