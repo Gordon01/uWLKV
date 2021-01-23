@@ -16,7 +16,6 @@ set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall -Wextra -Werror -pedantic")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage -g -O0")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage -g -O0")
-set(LCOV_REMOVE_EXTRA "'test/*'")
 
 cmake_policy(SET CMP0076 NEW)
 add_executable(uwlkv tests/main.cpp)

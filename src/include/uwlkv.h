@@ -10,7 +10,6 @@ typedef uint32_t uwlkv_offset;                     /* NVRAM address. Can be redu
 typedef int(* uwlkv_erase)(void);                  /* NVRAM erase function prototype */
 typedef uint8_t * (* uwlkv_double_capacity)(void); /* Cache double function prototype */
 
-
 #define UWLKV_O_ERASE_STARTED       (0)            /* Offset of ERASE_STARTED flag */
 #define UWLKV_O_ERASE_FINISHED      (1)            /* Offset of ERASE_FINISHED flag */
 #define UWLKV_METADATA_SIZE         (2)            /* Number of bytes, that library use in the beginning of each area */
