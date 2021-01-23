@@ -11,8 +11,8 @@ typedef enum
 } tests_cache;
 
 uwlkv_offset tests_init_uwlkv(tests_cache cache_type, uwlkv_offset size, uwlkv_offset reserved);
-uwlkv_offset tests_restart_uwlkv(void);
-uwlkv_offset tests_erase_nvram(void);
+uwlkv_offset tests_init_uwlkv(tests_cache cache_type);
+uwlkv_offset tests_erase_nvram(tests_cache cache_type);
 uint8_t tests_compare_stored_values(std::map<uwlkv_key, uwlkv_value> &map);
 void tests_fill_main(std::map<uwlkv_key, uwlkv_value> &map, 
                      uwlkv_offset number, uwlkv_value starting_value);

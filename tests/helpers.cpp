@@ -4,11 +4,10 @@
 #include "nvram_mock.h"
 #include "helpers.h"
 
-static tests_cache tests_cache_type;
 static uwlkv_entry tests_static_entries[TESTS_STATIC_ENTRIES_NUM];
 static uwlkv_entry tests_dynamic_entries[TESTS_DYNAMIC_ENTRIES_NUM];
 
-uwlkv_offset tests_init_uwlkv(const uwlkv_offset size, const uwlkv_offset reserved, uint8_t * cache,
+uwlkv_offset init_uwlkv(const uwlkv_offset size, const uwlkv_offset reserved, uint8_t * cache,
                               const uwlkv_key capacity, uwlkv_double_capacity double_capacity)
 {
     uwlkv_nvram_interface nvram_interface;
@@ -48,35 +47,33 @@ uint8_t * tests_double_capacity(void)
 
 uwlkv_offset tests_init_uwlkv(tests_cache cache_type, uwlkv_offset size, uwlkv_offset reserved)
 {
-    tests_cache_type = cache_type;
-
     switch (cache_type)
     {
     case TESTS_NO_CACHE:
-        return tests_init_uwlkv(size, reserved, nullptr, 0, nullptr);
+        return init_uwlkv(size, reserved, nullptr, 0, nullptr);
     
     case TESTS_STATIC:
-        return tests_init_uwlkv(size, reserved, (uint8_t *)&tests_static_entries, 
-                                TESTS_STATIC_ENTRIES_NUM, nullptr);
+        return init_uwlkv(size, reserved, (uint8_t *)&tests_static_entries, 
+                          TESTS_STATIC_ENTRIES_NUM, nullptr);
 
     case TESTS_DYNAMIC:
-        return tests_init_uwlkv(size, reserved, (uint8_t *)&tests_dynamic_entries, 
-                                TESTS_DYNAMIC_ENTRIES_NUM, &tests_double_capacity);
+        return init_uwlkv(size, reserved, (uint8_t *)&tests_dynamic_entries, 
+                          TESTS_DYNAMIC_ENTRIES_NUM, &tests_double_capacity);
     }
 
     return 0;
 }
 
-uwlkv_offset tests_restart_uwlkv(void)
+uwlkv_offset tests_init_uwlkv(tests_cache cache_type)
 {
-    return tests_init_uwlkv(tests_cache_type, 0, 0);
+    return tests_init_uwlkv(cache_type, 0, 0);
 }
 
-uwlkv_offset tests_erase_nvram(void)
+uwlkv_offset tests_erase_nvram(tests_cache cache_type)
 {
     mock_nvram_init();
 
-    return tests_init_uwlkv(tests_cache_type, 0, 0);
+    return tests_init_uwlkv(cache_type, 0, 0);
 }
 
 uint8_t tests_compare_stored_values(std::map<uwlkv_key, uwlkv_value> &map)
