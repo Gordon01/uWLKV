@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 
 project(uwlkv)
 enable_testing()
+link_libraries(gcov)
 include_directories(src src/include)
 
 set(CMAKE_CXX_STANDARD 14)
