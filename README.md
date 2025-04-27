@@ -3,67 +3,98 @@
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Gordon01_uWLKV&metric=coverage)](https://sonarcloud.io/dashboard?id=Gordon01_uWLKV)
 
 # uWLKV
-Micro wear-leveling key-value storage library for microcontrollers.
 
-This library greatly simplifies the implementation of the wear-leveling technique. Most microcontrollers have a small amount of NVRAM (either Flash or EEPROM) presented as an array of bytes and the endurance of each byte is often limited by 100k writes, which is sometimes inconvenient of you need to save something frequently or you don't want to limit user's actions. However, if EEPROM usage is low, we can use its free space to level wear by not writing twice to the same position. 
+Microcontroller Key–Value Storage with Wear-Leveling
 
-The idea behind this library is to make all write into the next free NVRAM block. By doing this we wear out all available NVRAM bytes evenly. This is particularly efficient if only a few parameters are changed often because they will have the most available free space. If there is no free space to save another parameter, the whole NVRAM erased, defragmented and writing will continue from the beginning, after restoring currently saved parameters. This is particularly handy because some microcontrollers can only erase big pages in FLASH and we are not limited by this.
+This library makes implementing wear-leveling on microcontrollers effortless. Many MCUs provide only a small NVRAM area (Flash or EEPROM) organized as a byte array, and each byte typically endures ≈100 000 writes. If your application writes data frequently, or you don’t want to limit user actions, this write limit can be problematic. By spreading writes across unused space, wear-leveling extends the usable life of the memory without restricting functionality.
 
-This comes with some overhead, of course, because we need to store a key alongside a value in NVRAM.
+[Full project documentation on DeepWiki](https://deepwiki.com/Gordon01/uWLKV).
+
+## How it works
+
+* __Sequential writes__: Each new key–value record is appended to the next free NVRAM block rather than overwriting old data. This evens out wear across all bytes.
+* __Dynamic space allocation__: Frequently changing parameters naturally occupy more free blocks, maximizing their available write-cycles without manual tuning.
+* __Page-wise erase and defragmentation__: When no free blocks remain, the library performs a single erase of the entire NVRAM region (or Flash page), compacts the latest key–value pairs back to the start, and then resumes writing. This suits microcontrollers that can only erase large Flash pages and avoids per-parameter erases.
+
+## Trade-offs
+
+* __Space overhead__: Every record stores its key alongside its value.
+* __Occasional latency__: Erase-and-compact cycles add a brief pause, but only when the main region is full.
 
 # How to use
-You need to provide four functions to access your particular type of NVRAM and declare its size.
 
-```
+## Define your NVRAM interface
+
+```cpp
+uwlkv_nvram_interface interface;
+
 interface.read          = &flash_read;
 interface.write         = &flash_write;
 interface.erase_main    = &flash_erase_main;
 interface.erase_reserve = &flash_erase_reserve;
-interface.size          = 1024;
-interface.reserved      = 256;
-
-uwlkv_init(&interface);
+interface.size          = 1024;  // Total NVRAM size, in bytes
+interface.reserved      = 256;   // Size of the reserved area within NVRAM, in bytes
 ```
-Erase functions do not accept parameters and should erase corresponding NVRAM area:
-* `erase_main` should erase memory from byte 0 to (`size` - `reserved` - 1)
-* `erase_reserve` should erase memory from byte (`size` - `reserved`) to (`size` - 1)
 
-Read and write functions have similar prototypes:
-```CPP
+### Read and write
+
+```cpp
 int(* read)(uint8_t * data, uwlkv_offset start, uwlkv_offset size);
 int(* write)(uint8_t * data, uwlkv_offset start, uwlkv_offset size);
 ```
+
 Where:
 * `data` - buffer pointer
-* `start` - offset in bytes
-* `size` - the amount of data to be manipulated, should be equal to the size of the buffer
+* `start` - byte-offset (0-based) into the NVRAM region
+* `size` - number of bytes to read or write (must match buffer size)
 
-Offset should start from 0.
+### Erase
 
-Reserved area should have enough space just to fit `UWLKV_MAX_ENTRIES` plus metadata. It is only used during main area erase to have a backup in case of sudden reset. If you have Flash memory, which can only be erased by a whole page, you probably want to set reserved space to fit exactly one page.
-
-If the supplied size looks wrong, `uwlkv_init()` will return 0 otherwise, it returns a maximum number of entries that can fit main area. You can calculate the approximate wear-leveling factor by dividing this value by `UWLKV_MAX_ENTRIES`.
-
-After successeful initialization, use the following functions to manipulate your data:
-```CPP
-uwlkv_error uwlkv_get_value(uwlkv_key key, uwlkv_value * value);
-uwlkv_error uwlkv_set_value(uwlkv_key key, uwlkv_value value);
+```cpp
+int (*erase_main)(void); // Must erase bytes [ 0 .. size − reserved − 1 ]
+int (*erase_reserve)(void); // Must erase bytes [ size − reserved .. size − 1 ]
 ```
-Currently, the library supports only one type: `uwlkv_value` which is `int32_t` by default.
 
-If your NVRAM type has a different value of erased byte (not 0xFF), please set it in `uwlkv.h` `UWLKV_ERASED_BYTE_VALUE`.
+### `reserved`
 
-**You can only store a limited number of parameters, identified by unique keys, not by the size of your NVRAM**. By default, `UWLKV_MAX_ENTRIES` value is 20.
+A backup area (in bytes) that holds up to `UWLKV_MAX_ENTRIES` plus metadata. During a full-region erase, the library uses this space to temporarily store valid entries in case of an unexpected reset. If your Flash can only erase in page-sized chunks, set reserved to exactly one page.
 
-# Tuning
-You can reduce RAM usage or overhead by adjusting values in `uwlkv.h`.
+## Initialize
 
-The library needs cache, which is currently a static array. If you do not need many unique keys, reduce `UWLKV_MAX_ENTRIES` value. 
+```cpp
+int entries = uwlkv_init(&interface);
+```
 
-To reduce storage overhead, you can make `uwlkv_key` or `uwlkv_value` type smaller, if you do not need to have keys larger than 255 or big values.
+* Returns 0 if `size` or `reserved` values are invalid.
+* Otherwise returns the maximum number of entries that can fit in the main area.
 
-To reduce RAM usage by the cache, you may also make `uwlkv_offset` smaller. If you only have 64k or smaller, use `uint16_t`. You may also need to make struct `uwlkv_entry` packed.
+You can estimate the wear-leveling factor as
 
-# TODO
-- [ ] Make an option to have cache size dynamic
-- [ ] Support different types of values
+```
+wear_factor ≃ (entries) / UWLKV_MAX_ENTRIES
+```
+
+## Store and retrieve values
+
+After successful initialization, use:
+
+```cpp
+uwlkv_error uwlkv_get_value(uwlkv_key key, uwlkv_value *value_out);
+uwlkv_error uwlkv_set_value(uwlkv_key key, uwlkv_value value_in);
+```
+
+* Keys are unique identifiers (e.g. integers or enums).
+* Values default to `int32_t`.
+* To change the erase-state byte from default `0xFF`, redefine `UWLKV_ERASED_BYTE_VALUE` in `uwlkv.h`.*
+
+## Limits
+
+The number of stored parameters is capped by `UWLKV_MAX_ENTRIES` (default 20), not by the raw NVRAM size.
+
+# Tuning for Lower RAM and Storage Overhead
+
+Adjust these in uwlkv.h to shrink RAM or NVRAM overhead:
+
+* `UWLKV_MAX_ENTRIES`: Reduce if you need fewer unique keys to shrink the static cache.
+* __Shrink key or value types__. By default, `uwlkv_key` is `uint16_t` and `uwlkv_value` is `int32_t`. If your keys never exceed 0–255, you can redefine `uwlkv_key` as `uint8_t`. Likewise, if stored values fit in 16 bits, redefine `uwlkv_value` as `int16_t` (or smaller).
+* __Reduce offset width__. The type uwlkv_offset determines how you address bytes in NVRAM. If your total NVRAM size is ≤ 65 535 bytes, change `uwlkv_offset` to `uint16_t` instead of `uint32_t` to cut RAM used by index calculations.
