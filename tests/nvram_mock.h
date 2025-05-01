@@ -19,6 +19,8 @@ void mock_nvram_init(void);
 
 int mock_flash_read(uint8_t * data, uint32_t start, uint32_t length);
 int mock_flash_write(uint8_t * data, uint32_t start, uint32_t length);
+void mock_nvram_disable_write(void); 
+void mock_nvram_enable_write(void);
 int mock_flash_erase_main(void);
 int mock_flash_erase_reserve(void);
 

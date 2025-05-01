@@ -81,21 +81,17 @@ uwlkv_error uwlkv_set_value(uwlkv_key key, uwlkv_value value)
     }
 
     uwlkv_offset offset = uwlkv_get_next_block();
-    uwlkv_entry * entry;
-    const uint8_t new_entry = UWLKV_E_SUCCESS == uwlkv_get_entry(key, &entry) ? 0 : 1;
-
-    uwlkv_error update = uwlkv_update_entry(key, offset);
-    if (UWLKV_E_SUCCESS != update)
+    uwlkv_entry *entry;
+    if     (UWLKV_E_NOT_EXIST == uwlkv_get_entry(key, &entry)
+        && (0 == uwlkv_map_free_entries())) 
     {
-        return update;
+        return UWLKV_E_NO_SPACE;
     }
 
     uwlkv_error write = uwlkv_write_entry(offset, key, value);
-    if (    (UWLKV_E_SUCCESS != write)
-        &&  (new_entry) )
+    if (UWLKV_E_SUCCESS == write)
     {
-        // On failed write, restore original entry offset
-        uwlkv_update_entry(key, entry->offset);
+        uwlkv_update_entry(key, offset);
     }
 
     return write;
@@ -118,5 +114,5 @@ uwlkv_key uwlkv_get_entries_number(void)
  */
 uwlkv_key uwlkv_get_free_entries(void)
 {
-    return uwlkv_get_free_space();
+    return uwlkv_map_free_entries();
 }

@@ -77,11 +77,10 @@ uwlkv_entry * uwlkv_create_entry(void)
  */
 uwlkv_error uwlkv_update_entry(const uwlkv_key key, const uwlkv_offset offset)
 {
-    const uwlkv_key free = uwlkv_get_free_space();
-    uwlkv_entry * entry;
+    uwlkv_entry *entry;
     if (UWLKV_E_NOT_EXIST == uwlkv_get_entry(key, &entry))
     {
-        if (0 == free)
+        if (0 == uwlkv_map_free_entries())
         {
             return UWLKV_E_NO_SPACE;
         }
@@ -116,7 +115,7 @@ uwlkv_key uwlkv_get_used_entries(void)
  *
  * @returns	Number of entries.
  */
-uwlkv_key uwlkv_get_free_space(void)
+uwlkv_key uwlkv_map_free_entries(void)
 {
     return UWLKV_MAX_ENTRIES - used_entries;
 }

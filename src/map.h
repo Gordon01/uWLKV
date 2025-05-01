@@ -7,6 +7,6 @@ uwlkv_entry * uwlkv_create_entry(void);
 uwlkv_error uwlkv_update_entry(const uwlkv_key key, const uwlkv_offset offset);
 void uwlkv_reset_map(void);
 uwlkv_key uwlkv_get_used_entries(void);
-uwlkv_key uwlkv_get_free_space(void);
+uwlkv_key uwlkv_map_free_entries(void);
 
 #endif
