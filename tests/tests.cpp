@@ -99,6 +99,27 @@ TEST_CASE("Writing and reading values", "[read_write]")
         auto entries = uwlkv_get_entries_number();
         CHECK(4 == entries);
     }
+    
+    SECTION("Failed write")
+    {
+        auto start = uwlkv_get_entries_number();
+        mock_nvram_disable_write();
+        uwlkv_value initial, actual;
+
+        // Existing value
+        CHECK(uwlkv_get_value(0, &initial) == UWLKV_E_SUCCESS);
+        CHECK(UWLKV_E_NVRAM_ERROR == uwlkv_set_value(0, initial + 1));
+        CHECK(uwlkv_get_value(0, &actual) == UWLKV_E_SUCCESS);
+        CHECK(initial == actual);
+
+        // New value
+        CHECK(uwlkv_get_value(1, &initial) == UWLKV_E_NOT_EXIST);
+        CHECK(UWLKV_E_NVRAM_ERROR == uwlkv_set_value(1, initial + 1));
+        CHECK(uwlkv_get_value(1, &actual) == UWLKV_E_NOT_EXIST);
+
+        CHECK(uwlkv_get_entries_number() == start);
+        mock_nvram_enable_write();
+    }   
 
     SECTION("Using all keys")
     {

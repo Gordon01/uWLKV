@@ -7,6 +7,7 @@
 
 static uint8_t flash_memory[FLASH_REGION_SIZE];
 static mock_nvram_erase main_erase_status, reserve_erase_status;
+static bool write_enabled = true;
 
 void mock_nvram_init(void)
 {
@@ -29,6 +30,10 @@ int mock_flash_read(uint8_t * data, uint32_t start, uint32_t length)
 
 int mock_flash_write(uint8_t * data, uint32_t start, uint32_t length)
 {
+	if (!write_enabled) {
+		return 2;
+	}
+
 	if ((start + length) > FLASH_REGION_SIZE)
 	{
 		return 1;
@@ -48,6 +53,17 @@ int mock_flash_write(uint8_t * data, uint32_t start, uint32_t length)
 
 	memcpy(flash_memory + start, data, length);
 	return 0;
+}
+
+// Prohibits write operations by `mock_flash_write()`. It will always return an error.
+void mock_nvram_disable_write(void) 
+{
+	write_enabled = false;
+}
+
+void mock_nvram_enable_write(void) 
+{
+	write_enabled = true;
 }
 
 int mock_flash_erase_main(void)
