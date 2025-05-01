@@ -1,9 +1,34 @@
+#include <map>
+#include <ostream>
 #include <stdint.h>
 #include <string.h>
-#include <map>
-#include "catch.hpp"
+
 #include "nvram_mock.h"
 #include "uwlkv.h"
+
+inline std::ostream &operator<<(std::ostream &os, uwlkv_error e)
+{
+    switch (e)
+    {
+    case UWLKV_E_SUCCESS:
+        return os << "OK";
+    case UWLKV_E_NOT_EXIST:
+        return os << "Requested entry does not exist on NVRAM";
+    case UWLKV_E_NVRAM_ERROR:
+        return os << "NVRAM interface signalled an error during the operation";
+    case UWLKV_E_NOT_STARTED:
+        return os << "UWLKV haven't been initialized";
+    case UWLKV_E_NO_SPACE:
+        return os << "No free space in map for new entry";
+    case UWLKV_E_WRONG_OFFSET:
+        return os << "Provided offset is out of NVRAM bounds";
+    default:
+        return os << "uwlkv_error(" << e << ")";
+    }
+}
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 uwlkv_offset init_uwlkv(uwlkv_offset size, uwlkv_offset reserved)
 {
@@ -77,7 +102,7 @@ TEST_CASE("Writing and reading values", "[read_write]")
 
     SECTION("Using all keys")
     {
-        uwlkv_value test_value;
+        uwlkv_value test_value = 0;
         for(uwlkv_key key = 0; key < UWLKV_MAX_ENTRIES; key++)
         {
             test_value = key + 10000;

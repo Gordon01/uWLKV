@@ -23,7 +23,7 @@ jobs:
           cd build
           cmake ../
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make all
-          ./uwlkv
+          ./tests
           make coverage
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
@@ -31,4 +31,4 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+            --define sonar.cfamily.compile-commands="build/${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"

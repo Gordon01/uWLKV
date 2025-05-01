@@ -247,5 +247,5 @@ uwlkv_offset uwlkv_get_next_block(void)
 
     next_block += UWLKV_ENTRY_SIZE;
 
-    return next_block - UWLKV_ENTRY_SIZE;
+    return next_block - (uwlkv_offset)UWLKV_ENTRY_SIZE;
 }
