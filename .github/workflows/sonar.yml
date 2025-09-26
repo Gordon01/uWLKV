@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Build Wrapper
-        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v5
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6
       - name: Run Build Wrapper
         run: |
           mkdir build
@@ -26,7 +26,7 @@ jobs:
           ./tests
           make coverage
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
